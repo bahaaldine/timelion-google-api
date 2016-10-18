@@ -1,0 +1,46 @@
+language: node_js
+node_js:
+- 4
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-4.8
+sudo: required
+dist: trusty
+env:
+- CXX="g++-4.8" KIBANA_VERSION="5.0.0-beta1" ELASTICSEARCH_VERSION="5.0.0-beta1"
+
+before_script:
+- npm install -g gulp
+- wget -O kibana.tar.gz https://github.com/elastic/kibana/archive/v${KIBANA_VERSION}.tar.gz
+- mkdir -p kibana && tar -zxf kibana.tar.gz -C kibana --strip-components=1
+- sh -c 'cd kibana && npm install'
+- curl -O https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ELASTICSEARCH_VERSION}.deb && sudo dpkg -i --force-confnew elasticsearch-${ELASTICSEARCH_VERSION}.deb && sudo service elasticsearch restart
+- curl -O https://raw.githubusercontent.com/rockymadden/transfer-cli/master/src/transfer && chmod +x transfer
+- pip install mkdocs
+
+script:
+- mkdocs build
+- gulp build
+- gulp package
+- bash test.sh
+
+deploy:
+  provider: releases
+  api_key:
+    secure: HWPK1BBoCb0gsMwVNmuA7+LB7Yhm2bBSt7wZW402bsOC89B1Fq6ODTGLBxH/jTRDl9Qol7w4/jfKFiJbS7PDVC5bSBauKm0YKXniSQM4Fae8EC6FK/LG/0bztojz+uzNP4zZ80mUXS127GFGbjMTRkkvd5Ise7mCvTbpECJOBDSEX6rIFuBMQyy3WFzXos/3uuCtQEtTw5SnY8X9r8NKq8QmAZ4SrmHqDnCXLW/j372xjVcPYxRNRLxf7z6lznRR/4vyENXCOypdtyUdCcXjFvm8MbRR0YmUb8Y7PimyszytMeX+yR4Hf0IV64Vmj6PU5VQFwmYKWVCjL2FLZITxcq5JzDuyodthK4vBKceF0qGFIdt/GskNhpmduPke2nsqEE7cq1/+k4l05HmLdu8n2yvpYdssZ7YZP90W5sOo4uaDGoDiFvcsOc8pA7y3PlcpHfMQV+yPQOHE1FyrWhjDPQax10clCjF8bzLeTEjAMDOUaJpcLOjqtiZpkT2QbFDPDpYsVf0a0f7q48euAqsa0FpHUA4N1pglPd9RsHT0j30UWmMoKoZi/nnRyIvTU5TfPe1thhZ7NZnMI7jCYQeVYKRIUxba3zey0WvDGBWl17sHyUCt6LWwi99MKvvL/7qjeLi9DxqRCVnLzudIUvK0dyP9A8PSjbKlhiM1Y0mmxEc=
+  file: $TRAVIS_BUILD_DIR/target/timelion-google-api-5.0.0-beta1.zip
+  skip_cleanup: true
+  on:
+    repo: bahaaldine/timelion-google-api
+    tags: true
+    node: 4
+after_success:
+- |2-
+
+  $(npm bin)/set-up-ssh --key "$encrypted_XXXXXXXXXXXX_key" \
+                        --iv "$encrypted_XXXXXXXXXXXX_iv" \
+                        --path-encrypted-key ".travis/github_deploy_key.enc"
